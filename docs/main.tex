@@ -1,0 +1,144 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{xcolor}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}
+\setlist{leftmargin=*, itemsep=0.3em}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE \textbf{AUB CS Capacity-Constraint System}}\\[0.5em]
+\end{center}
+
+\textbf{Start Date:} September 6, 2025 (Beirut) \\
+
+\hrule
+
+\section*{1) Purpose \& Problem Statement}
+
+\textbf{Goal:} Replace the current manual Google Forms $\rightarrow$ Google Sheets $\rightarrow$ Chair review pipeline with a robust, auditable system that enforces academic rules and capacity policies at the \textbf{data layer}, exposes a \textbf{student submission UI}, and a \textbf{chair/department UI} for triage, review, and decisioning.
+
+\textbf{Current issues:}
+\begin{itemize}
+  \item Fragmented data capture; heavy manual verification and filtering by the Chair.
+  \item Weak validation (students can misreport; multiple conflicting requests possible).
+  \item No strong audit trail, deduplication, or constraint enforcement.
+  \item Slow turnaround; difficult bulk actions and prioritization.
+\end{itemize}
+
+\textbf{High-level success criteria:}
+\begin{itemize}
+  \item Accurate, validated requests at submission time; minimized manual checks.
+  \item Deterministic, transparent enforcement of prerequisites/capacity/eligibility.
+  \item One consolidated database as \textbf{source of truth} with auditability.
+  \item Efficient chair workflows (search, filter, bulk approve/reject, notes).
+\end{itemize}
+
+\hrule
+
+\section*{2) Stakeholders \& Roles}
+
+\begin{itemize}
+  \item \textbf{Students}: Submit capacity/override requests, upload transcript evidence.
+  \item \textbf{Chair / Department reviewer(s)}: Review, comment, approve/reject/waitlist; apply policies.
+  \item \textbf{GAs/Engineering team}: Design schema, implement validation \& workflows, maintain system.
+  \item \textbf{Registrar/Advising (future)}: Potential integration (read-only) or policy inputs.
+\end{itemize}
+
+\hrule
+
+\section*{3) Current Flow (As-Is)}
+
+\begin{enumerate}
+  \item Student fills Google Form.
+  \item Responses land in Google Sheet.
+  \item Chair scans rows, validates manually (prereqs, duplicates, necessity, etc.).
+  \item Chair emails decisions or adjusts caps manually via SIS (outside the sheet).
+\end{enumerate}
+
+\textbf{Pain points:} minimal validation, duplicated/conflicting requests, no dedupe per student+course+term, hard to prove eligibility or necessity, time-consuming.
+
+\hrule
+
+\section*{4) Target System (To-Be) Overview}
+
+\textbf{Two Interfaces:}
+\begin{itemize}
+  \item \textbf{Student portal} (submit request + evidence, track status).
+  \item \textbf{Chair portal} (queue of requests, powerful filters, bulk actions, decision logging).
+\end{itemize}
+
+\textbf{Database-centric design:}
+\begin{itemize}
+  \item All entities (students, courses, sections, prerequisites, requests, decisions, transcripts) live in a relational database (SQL likely).
+  \item \textbf{Data invariants} (uniqueness, prerequisite satisfaction, per-term limits) enforced by keys, constraints, and transactional checks.
+\end{itemize}
+
+\hrule
+
+\section*{5) Student Submission --- Minimum Data Set}
+
+\begin{itemize}
+  \item \textbf{Identity}: Banner ID, AUB email (SSO in future), name (read-only from directory if integrated).
+  \item \textbf{Academic context}: Major, cohort year, program (BS/BE), expected graduation term (optional), advisor (optional).
+  \item \textbf{Term}: e.g., \texttt{Fall 2025}.
+  \item \textbf{Request type} (categorize for policy):
+  \begin{itemize}
+    \item \textbf{Capacity override} (section full)
+    \item \textbf{Prerequisite override} (missing prereq, special permission)
+    \item \textbf{Overload} (exceeding credit limit)
+    \item \textbf{Time-conflict exception} (optional, future)
+  \end{itemize}
+  \item \textbf{Course/Section}: Course code (e.g., CMPS 244), preferred section(s) if any.
+  \item \textbf{Reason/Justification}: Free text + dropdown reasons (major requirement, graduation-urgent, sequence dependency, etc.).
+  \item \textbf{Evidence}: \textbf{Transcript upload} (required for certain request types), optional supporting docs.
+  \item \textbf{Attestations}: e.g., ``I have not submitted more requests than allowed'', ``information is accurate''.
+\end{itemize}
+
+\hrule
+
+\section*{6) Chair / Department UI --- Minimum Capabilities}
+
+\begin{itemize}
+  \item \textbf{Queue}: Pending requests with sortable columns and filters (term, course, reason, priority, status).
+  \item \textbf{Search}: Banner ID, name, course code; quick student history view.
+  \item \textbf{Detail page}: Request metadata, transcript preview, prerequisite/eligibility assessment, prior decisions.
+  \item \textbf{Decisioning}: Approve / Reject / Waitlist; add internal/external notes; one decision per request; timestamped.
+  \item \textbf{Bulk actions}: Approve batches (e.g., all seniors for course X); export CSV.
+  \item \textbf{Audit}: Immutable log entries for status changes, who did what, when.
+\end{itemize}
+
+\hrule
+
+\section*{7) Core Entities (Initial Draft)}
+
+\begin{itemize}
+  \item \textbf{STUDENT}: \texttt{id}, \texttt{banner\_id}, \texttt{major}, \texttt{cohort\_year}.
+  \item \textbf{COURSE}: \texttt{code}, \texttt{title}, \texttt{credits}, \texttt{department}.
+  \item \textbf{SECTION}: \texttt{id}, \texttt{course\_code} $\rightarrow$ \texttt{COURSE}, \texttt{term}, \texttt{capacity}.
+  \item \textbf{PREREQ}: \texttt{(course\_code, requires\_code, type=\{hard, soft, co\})}.
+  \item \textbf{TRANSCRIPT\_ENTRY}: \texttt{(student\_id, course\_code, term, grade)}.
+  \item \textbf{CAPACITY\_REQUEST}: \texttt{(id, student\_id, term, course\_code, section\_optional, type, reason, status, created\_at)}.
+  \item \textbf{DECISION}: \texttt{(id, request\_id UNIQUE, reviewer\_id, outcome=\{approve,reject,waitlist\}, note, decided\_at)}.
+  \item \textbf{TERM\_POLICY} (future): per-term caps (e.g., max elective requests per student).
+\end{itemize}
+
+\hrule
+
+\section*{8) Immediate Next Steps}
+
+\begin{enumerate}
+  \item \textbf{Draft ER Diagram} (Mermaid + notes) for review --- include entities above and FK/unique/partial-index ideas.
+  \item \textbf{Collect sample fields from current Google Sheet} used by the Chair; map to proposed schema.
+\end{enumerate}
+
+
+\end{document}
