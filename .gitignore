@@ -4,12 +4,53 @@ Thumbs.db
 .idea/
 .vscode/
 
-# LaTeX
+# LaTeX build directory (adjust if yours isn’t 'out')
+out/
+_build/
+
+# Core LaTeX artifacts
 *.aux
 *.log
-*.toc
 *.out
+*.toc
 *.synctex.gz
+*.auxlock
+*.fdb_latexmk
+*.fls
+
+# BibTeX / BibLaTeX
 *.bbl
 *.blg
-_build/
+*.bcf
+*.run.xml
+
+# Index / glossaries / nomencl
+*.idx
+*.ind
+*.ilg
+*.ist
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls*
+*.nlo
+*.nls
+
+# Beamer
+*.nav
+*.snm
+*.vrb
+
+# Minted (Pygments cache)
+_minted-*/
+
+# TikZ externalization
+*.dpth
+*.md5
+
+# Lists (figures/tables/listings)
+*.lof
+*.lot
+*.lol
