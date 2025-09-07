@@ -118,25 +118,10 @@
 
 \hrule
 
-\section*{7) Core Entities (Initial Draft)}
-
-\begin{itemize}
-  \item \textbf{STUDENT}: \texttt{id}, \texttt{banner\_id}, \texttt{major}, \texttt{cohort\_year}.
-  \item \textbf{COURSE}: \texttt{code}, \texttt{title}, \texttt{credits}, \texttt{department}.
-  \item \textbf{SECTION}: \texttt{id}, \texttt{course\_code} $\rightarrow$ \texttt{COURSE}, \texttt{term}, \texttt{capacity}.
-  \item \textbf{PREREQ}: \texttt{(course\_code, requires\_code, type=\{hard, soft, co\})}.
-  \item \textbf{TRANSCRIPT\_ENTRY}: \texttt{(student\_id, course\_code, term, grade)}.
-  \item \textbf{CAPACITY\_REQUEST}: \texttt{(id, student\_id, term, course\_code, section\_optional, type, reason, status, created\_at)}.
-  \item \textbf{DECISION}: \texttt{(id, request\_id UNIQUE, reviewer\_id, outcome=\{approve,reject,waitlist\}, note, decided\_at)}.
-  \item \textbf{TERM\_POLICY} (future): per-term caps (e.g., max elective requests per student).
-\end{itemize}
-
-\hrule
-
-\section*{8) Immediate Next Steps}
+\section*{7) Immediate Next Steps}
 
 \begin{enumerate}
-  \item \textbf{Draft ER Diagram} (Mermaid + notes) for review --- include entities above and FK/unique/partial-index ideas.
+  \item \textbf{Draft ERD} for review --- include entities above and FK/unique/partial-index ideas.
   \item \textbf{Collect sample fields from current Google Sheet} used by the Chair; map to proposed schema.
 \end{enumerate}
 

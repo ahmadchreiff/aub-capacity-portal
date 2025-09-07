@@ -1,0 +1,106 @@
+\documentclass[11pt]{article}
+
+% --- Packages ---
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+
+% --- Styling ---
+\setlist{itemsep=2pt,topsep=4pt}
+\titleformat{\section}{\large\bfseries}{}{0pt}{}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0pt}{}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\smallgray}[1]{\textcolor{gray}{\footnotesize #1}}
+
+\begin{document}
+
+\begin{center}
+{\LARGE AUB Request Portal — ERD \& Schema Summary}\\[2pt]
+\smallgray{Student capacity/prerequisite/overload requests; departmental review workflow}
+\end{center}
+\vspace{0.75em}
+
+%====================================================
+\section*{Overview}
+This schema powers a portal where \textbf{students} submit requests tied to a \textbf{course} in a specific \textbf{term}. Requests can include multiple \textbf{reasons} (capacity, prerequisite, etc.), optional \textbf{CRNs} (lecture/lab/recitation) via linked \textbf{sections}, and supporting \textbf{evidence}. A \textbf{reviewer} enters exactly one \textbf{decision} per request.
+
+%====================================================
+\section*{Entities \& Roles}
+\begin{itemize}
+  \item \textbf{department} — owning unit for courses/programs.
+  \item \textbf{major}, \textbf{minor} — controlled vocabularies linked to \code{department}.
+  \item \textbf{student} — directory facts (AUB email, level, major). Many-to-many to \code{minor} via \code{student\_minor}.
+  \item \textbf{term} — academic terms like \code{F2025}.
+  \item \textbf{course} — catalog entries (e.g., \code{MATH201}), each in one \code{department}.
+  \item \textbf{section} — term-specific offering with a CRN; lectures, labs, recitations are all sections.
+  \item \textbf{course\_prereq} — rules between courses (prereq/coreq/permission).
+  \item \textbf{request} — student's submission for a course in a term, with status, justification, timestamps.
+  \item \textbf{request\_tag\_link} — attaches one or more \emph{reasons} (enum) to the request.
+  \item \textbf{request\_section} — attaches up to one CRN per role (lecture/lab/recitation) to the request.
+  \item \textbf{request\_evidence} — files/links supporting the request (enum \code{evidence\_kind}).
+  \item \textbf{user} — reviewers/staff; can be associated to a home department (nullable).
+  \item \textbf{decision} — the outcome for a request (exactly one per request).
+\end{itemize}
+
+%====================================================
+\section*{Relationship Cardinalities Explained}
+\begin{itemize}
+  \item \textbf{department (1) — course (0..N)}: \code{course.dept\_code} is \emph{NOT NULL} and FK to \code{department}.
+  \item \textbf{course (1) — section (0..N)}: \code{section.course\_code} is \emph{NOT NULL}.
+  \item \textbf{term (1) — section (0..N)}: \code{section.term\_code} is \emph{NOT NULL}.
+  \item \textbf{student (1) — request (0..N)}: \code{request.student\_id} is \emph{NOT NULL}.
+  \item \textbf{course (1) — request (0..N)}: \code{request.course\_code} is \emph{NOT NULL}.
+  \item \textbf{term (1) — request (0..N)}: \code{request.term\_code} is \emph{NOT NULL}.
+  \item \textbf{request (1) — request\_tag\_link (0..N)}: junction PK \code{(request\_id, tag)} avoids duplicates.
+  \item \textbf{request (1) — request\_section (0..3)}: PK \code{(request\_id, role)} caps one lecture, one lab, one recitation; UNIQUE \code{(request\_id, section\_id)} blocks duplicate CRN links.
+  \item \textbf{request\_section (N) — section (1)}: \code{section\_id} is \emph{NOT NULL} FK.
+  \item \textbf{student (1) — student\_minor (0..M)} and \textbf{minor (1) — student\_minor (0..M)}: composite PK \code{(student\_id, minor\_code)}.
+  \item \textbf{course (1) — course\_prereq (0..N)} and again as the prereq side: both FKs \emph{NOT NULL}.
+  \item \textbf{request (1) — request\_evidence (0..N)}: \code{request\_id} is \emph{NOT NULL}.
+  \item \textbf{user (1) — decision (0..N)} and \textbf{request (1) — decision (0..1)}: \code{decision.request\_id} is \emph{UNIQUE NOT NULL}.
+\end{itemize}
+
+%====================================================
+\section*{Enums (Controlled Vocabularies)}
+\begin{itemize}
+  \item \textbf{request\_status}: \code{draft}, \code{submitted}, \code{under\_review}, \code{approved}, \code{denied}, \code{withdrawn}
+  \item \textbf{request\_reason}: \code{capacity}, \code{class}, \code{faculty}, \code{level}, \code{major}, \code{prerequisite}, \code{other}
+  \item \textbf{decision\_outcome}: \code{approve}, \code{deny}, \code{need\_more\_info}, \code{forward}, \code{retract}
+  \item \textbf{prereq\_kind}: \code{prerequisite}, \code{corequisite}, \code{concurrent}, \code{standing}, \code{instructor\_permission}, \code{program\_restriction}
+  \item \textbf{section\_role}: \code{lecture}, \code{lab}, \code{recitation}
+  \item \textbf{evidence\_kind}: \code{transcript}, \code{degree\_audit}, \code{email}, \code{syllabus}, \code{other\_doc}
+\end{itemize}
+
+%====================================================
+\section*{Business Invariants}
+\begin{itemize}
+  \item Exactly one \textbf{decision} per \textbf{request}: \code{decision.request\_id} is \emph{UNIQUE NOT NULL}.
+  \item At most one CRN per role per request: PK \code{(request\_id, role)}.
+  \item No duplicate CRN link on a request: \code{UNIQUE(request\_id, section\_id)}.
+  \item No duplicate \textbf{reason} on a request: PK \code{(request\_id, tag)} with enum \code{request\_reason}.
+  \item Many minors per student without duplicates: \code{student\_minor} PK \code{(student\_id, minor\_code)}.
+  \item All child rows belong to a parent: all workflow FKs are \emph{NOT NULL}.
+\end{itemize}
+
+%====================================================
+\section*{Walkthrough Example (Concrete Record Flow)}
+\small Ahmad (student \code{S12345}) requests \code{MATH201} in \code{F2025} due to capacity. He cites lecture CRN 12345 and recitation CRN 67890 and uploads a transcript. A reviewer approves.
+
+\begin{enumerate}
+  \item \code{student}: \code{(student\_id='S12345', aub\_email=..., level='UG\_SR', major\_code='MATH')}
+  \item \code{course}: \code{('MATH201', dept='MATH')} \quad \code{term}: \code{('F2025')}
+  \item \code{section}: two rows for F2025: \code{(crn=12345, section\_type=lecture)}, \code{(crn=67890, section\_type=recitation)}
+  \item \code{request}: ties student, course, term; status \code{submitted}.
+  \item \code{request\_tag\_link}: \code{(request\_id, tag='capacity')}
+  \item \code{request\_section}: \code{(request\_id, role='lecture', section\_id=...)} and \code{(..., role='recitation', ...)}
+  \item \code{request\_evidence}: transcript URL.
+  \item \code{decision}: \code{(request\_id, outcome='approve', reviewer\_id=\dots)}
+\end{enumerate}
+
+\end{document}
